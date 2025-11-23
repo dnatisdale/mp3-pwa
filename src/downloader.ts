@@ -8,10 +8,17 @@ export type ProgressEvent = {
   error?: string;
 };
 
-// Build URL from a T-number
-export function makeMp3Url(tNumber: string) {
-  const clean = tNumber.trim();
-  return `http://5fi.sh/${clean}-001.mp3`;
+// Build URL from a T-number, auto-fixing missing "T"
+export function makeMp3Url(raw: string) {
+  let clean = raw.trim();
+
+  // If CSV gives "62808", turn it into "T62808"
+  if (!clean.toUpperCase().startsWith("T")) {
+    clean = "T" + clean;
+  }
+
+  // IMPORTANT: use HTTPS to avoid mixed-content fetch blocking
+  return `https://5fi.sh/${clean}-001.mp3`;
 }
 
 function getErrorMessage(err: unknown): string {

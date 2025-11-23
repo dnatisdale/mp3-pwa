@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { downloadAll, makeMp3Url } from "./downloader";
 import { getTrack } from "./db";
+import { exportZipFromIndexedDb } from "./zipExport";
+import type { ZipProgress } from "./zipExport";
 
 function parseCsv(text: string): string[] {
   const lines = text
@@ -25,8 +27,10 @@ export default function BulkDownloader() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [errors, setErrors] = useState<string[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
 
-  // auto-load public/tracks.csv on startup
+  const urls = tNumbers.map(makeMp3Url);
+
   useEffect(() => {
     (async () => {
       try {
@@ -61,11 +65,45 @@ export default function BulkDownloader() {
       }
 
       setStatus(
-        e.done === e.total ? "Finished." : `Downloading ${e.done} / ${e.total}`
+        e.done === e.total
+          ? "Download finished."
+          : `Downloading ${e.done} / ${e.total}`
       );
     });
 
     setIsDownloading(false);
+  }
+
+  async function startZipExport() {
+    if (!urls.length) {
+      setStatus("No tracks loaded.");
+      return;
+    }
+
+    setIsZipping(true);
+    setErrors([]);
+    setProgress({ done: 0, total: urls.length });
+    setStatus("Building ZIP…");
+
+    await exportZipFromIndexedDb(
+      urls,
+      "tgn-mp3-library.zip",
+      (p: ZipProgress) => {
+        setProgress({ done: p.done, total: p.total });
+
+        if (!p.ok) {
+          setErrors((prev) => [...prev, `${p.url} → ${p.error}`]);
+        }
+
+        setStatus(
+          p.done === p.total
+            ? "ZIP ready! Download should start automatically."
+            : `Zipping ${p.done} / ${p.total}`
+        );
+      }
+    );
+
+    setIsZipping(false);
   }
 
   async function testFirstOffline() {
@@ -82,13 +120,22 @@ export default function BulkDownloader() {
       <p>
         Base URL pattern:
         <br />
-        <code>http://5fi.sh/T#####-001.mp3</code>
+        <code>https://5fi.sh/T#####-001.mp3</code>
       </p>
 
       <div style={{ marginTop: 12 }}>
-        <button onClick={startDownload} disabled={isDownloading}>
+        <button onClick={startDownload} disabled={isDownloading || isZipping}>
           {isDownloading ? "Downloading…" : "Download All for Offline Use"}
         </button>
+
+        <button
+          onClick={startZipExport}
+          disabled={isDownloading || isZipping}
+          style={{ marginLeft: 8 }}
+        >
+          {isZipping ? "Zipping…" : "Export ZIP to Downloads"}
+        </button>
+
         <button onClick={testFirstOffline} style={{ marginLeft: 8 }}>
           Check first offline?
         </button>
