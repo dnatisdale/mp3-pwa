@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { downloadAll, makeMp3Url } from "./downloader";
 import { getTrack } from "./db";
 import { exportZipFromIndexedDb } from "./zipExport";
-import type { ZipProgress } from "./zipExport";
+
+type ZipProgress = {
+  done: number;
+  total: number;
+  url: string;
+  ok: boolean;
+  error?: string;
+};
 
 function parseCsv(text: string): string[] {
   const lines = text
@@ -98,7 +105,7 @@ export default function BulkDownloader() {
         setStatus(
           p.done === p.total
             ? "ZIP ready! Download should start automatically."
-            : `Zipping ${p.done} / ${p.total}`
+            : `Zipping ${p.done} / {p.total}`
         );
       }
     );
